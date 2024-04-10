@@ -14,7 +14,12 @@ import { HiCamera } from "react-icons/hi";
 import { AiOutlineClose } from "react-icons/ai";
 // firebase
 import { app } from "@/utils/firebaseConfig";
-import { getStorage, ref, uploadBytesResumable } from "firebase/storage";
+import {
+  getDownloadURL,
+  getStorage,
+  ref,
+  uploadBytesResumable,
+} from "firebase/storage";
 
 const Header = () => {
   const { data: session } = useSession();
@@ -41,7 +46,26 @@ const Header = () => {
     const fileName = new Date().getTime() + "-" + selectedFile.name;
     const storageRef = ref(storage, fileName);
     const uploadeTask = uploadBytesResumable(storageRef, selectedFile);
-    uploadeTask.on();
+    uploadeTask.on(
+      "state_changed",
+      (snapshot) => {
+        const progress =
+          (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        console.log("Upload is " + progress + "% done");
+      },
+      (error) => {
+        console.log(error);
+        setImageFileUploading(false);
+        setImageFileUrl(null);
+        setSelectedFile(null);
+      },
+      () => {
+        getDownloadURL(uploadeTask.snapshot.ref).then((downloadURL) => {
+          setImageFileUrl(downloadURL);
+          setImageFileUploading(false);
+        });
+      }
+    );
   };
 
   useEffect(() => {
@@ -56,10 +80,12 @@ const Header = () => {
         <Link href="/">
           <Image
             src="/text_logo.svg"
-            width={96}
-            height={96}
+            width={50}
+            height={10}
             alt="logo"
+            priority
             className="hidden lg:inline-flex"
+            style={{ width: "100px", height: "40px" }}
           />
           <Image
             src={"/logo.svg"}
@@ -114,7 +140,9 @@ const Header = () => {
                   width={400}
                   height={400}
                   onClick={() => setSelectedFile(null)}
-                  className="cursor-pointer"
+                  className={`cursor-pointer w-full max-h-[250px] object-cover ${
+                    imageFileUploading ? "animate-pulse" : ""
+                  }`}
                 />
               ) : (
                 <HiCamera
