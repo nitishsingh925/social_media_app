@@ -1,15 +1,55 @@
 "use client";
-import { useState } from "react";
+// react
+import { useEffect, useRef, useState } from "react";
+// next js
 import Link from "next/link";
 import Image from "next/image";
+// next auth
 import { signIn, signOut, useSession } from "next-auth/react";
+// react modal
 import Modal from "react-modal";
+// react icons
 import { IoMdAddCircleOutline } from "react-icons/io";
 import { HiCamera } from "react-icons/hi";
 import { AiOutlineClose } from "react-icons/ai";
+// firebase
+import { app } from "@/utils/firebaseConfig";
+import { getStorage, ref, uploadBytesResumable } from "firebase/storage";
+
 const Header = () => {
   const { data: session } = useSession();
   const [isOpen, setIsOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [imageFileUrl, setImageFileUrl] = useState(null);
+  const [imageFileUploading, setImageFileUploading] = useState(false);
+
+  const filePickerRef = useRef(null);
+
+  console.log(selectedFile);
+  console.log(imageFileUrl);
+
+  const addImageToPost = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+      setImageFileUrl(URL.createObjectURL(file));
+    }
+  };
+  const uploadedImageToStorage = async () => {
+    setImageFileUploading(true);
+    const storage = getStorage(app);
+    const fileName = new Date().getTime() + "-" + selectedFile.name;
+    const storageRef = ref(storage, fileName);
+    const uploadeTask = uploadBytesResumable(storageRef, selectedFile);
+    uploadeTask.on();
+  };
+
+  useEffect(() => {
+    if (selectedFile) {
+      uploadedImageToStorage(selectedFile);
+    }
+  }, [selectedFile]);
+
   return (
     <header className="shadow-sm border-b sticky top-0 bg-white z-30 p-3">
       <div className="flex justify-between items-center max-w-6xl mx-auto ">
@@ -67,7 +107,28 @@ const Header = () => {
         >
           <div>
             <div className="flex flex-col justify-center items-center h-[100%]">
-              <HiCamera className="text-5xl text-gray-500 cursor-pointer" />
+              {selectedFile ? (
+                <Image
+                  src={imageFileUrl}
+                  alt="image"
+                  width={400}
+                  height={400}
+                  onClick={() => setSelectedFile(null)}
+                  className="cursor-pointer"
+                />
+              ) : (
+                <HiCamera
+                  onClick={() => filePickerRef.current.click()}
+                  className="text-5xl text-gray-500 cursor-pointer"
+                />
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={addImageToPost}
+                hidden
+                ref={filePickerRef}
+              />
             </div>
             <input
               type="text"
